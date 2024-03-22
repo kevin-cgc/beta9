@@ -19,13 +19,13 @@ func main() {
 	clusterName := "eks-stage-01"
 	region := "us-east-1"
 
-	clientset, err := agent.InitializeKubeClientLocal(clusterName, region)
+	clients, err := agent.InitializeClients(clusterName, region)
 	if err != nil {
 		log.Fatalf("error initializing Kubernetes client: %v\n", err)
 	}
 
 	newProvider := func(cfg nodeutil.ProviderConfig) (nodeutil.Provider, node.NodeProvider, error) {
-		provider, nodeProvider, err := agent.NewProvider(clientset, nodeName)
+		provider, nodeProvider, err := agent.NewProvider(clients, nodeName)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -37,7 +37,7 @@ func main() {
 		NumWorkers:           runtime.NumCPU(),
 		InformerResyncPeriod: time.Minute,
 		HTTPListenAddr:       ":10250",
-		Client:               clientset,
+		Client:               clients.LocalClient,
 		NodeSpec: v1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: nodeName,

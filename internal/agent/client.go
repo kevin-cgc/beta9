@@ -14,7 +14,29 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-func InitializeKubeClientLocal(clusterName, region string) (*kubernetes.Clientset, error) {
+type ProviderClients struct {
+	LocalClient  *kubernetes.Clientset
+	RemoteClient *kubernetes.Clientset
+}
+
+func InitializeClients(clusterName, region string) (*ProviderClients, error) {
+	localClient, err := localClient()
+	if err != nil {
+		return nil, err
+	}
+
+	// remoteClient, err := remoteClient(clusterName, region)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return &ProviderClients{
+		LocalClient:  localClient,
+		RemoteClient: nil, // remoteClient,
+	}, nil
+}
+
+func localClient() (*kubernetes.Clientset, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -28,7 +50,7 @@ func InitializeKubeClientLocal(clusterName, region string) (*kubernetes.Clientse
 	return clientset, nil
 }
 
-func InitializeKubeClient(clusterName, region string) (*kubernetes.Clientset, error) {
+func remoteClient(clusterName, region string) (*kubernetes.Clientset, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
 	if err != nil {
 		return nil, fmt.Errorf("unable to load SDK config: %w", err)

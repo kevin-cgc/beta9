@@ -13,17 +13,19 @@ import (
 	nodeutil "github.com/virtual-kubelet/virtual-kubelet/node/nodeutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/client-go/kubernetes"
 )
 
 type RemoteProvider struct {
+	clients  *ProviderClients
+	nodeName string
 }
 
 type RemoteNodeProvider struct {
+	nodeName string
 }
 
 func (p *RemoteNodeProvider) Ping(context.Context) error {
+	// TODO: add connectivity health check (maybe to tailscale)
 	return nil
 }
 
@@ -38,10 +40,13 @@ func (p *RemoteNodeProvider) NotifyNodeStatus(ctx context.Context, cb func(*core
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				// Create a new node status object
 				nodeStatus := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "remote-node", // Use your actual node name
+						Labels: map[string]string{
+							"type":                   "virtual-kubelet",
+							"kubernetes.io/role":     "agent",
+							"kubernetes.io/hostname": p.nodeName,
+						},
 					},
 					Status: corev1.NodeStatus{
 						Conditions: []corev1.NodeCondition{
@@ -92,36 +97,57 @@ func (p *RemoteProvider) PortForward(ctx context.Context, namespace, pod string,
 
 // Pod controller
 
-func (p *RemoteProvider) GetPod(context.Context, string, string) (*corev1.Pod, error) {
-	return nil, nil
+func (p *RemoteProvider) GetPod(ctx context.Context, namespace, name string) (*corev1.Pod, error) {
+	return p.clients.LocalClient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 }
 
 func (p *RemoteProvider) GetPods(ctx context.Context) ([]*corev1.Pod, error) {
-	return nil, nil
+	podList, err := p.clients.LocalClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + p.nodeName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	pods := make([]*corev1.Pod, len(podList.Items))
+	for i, pod := range podList.Items {
+		pods[i] = &pod
+	}
+	return pods, nil
 }
 
-func (p *RemoteProvider) GetPodStatus(context.Context, string, string) (*corev1.PodStatus, error) {
-	return nil, nil
+func (p *RemoteProvider) GetPodStatus(ctx context.Context, namespace, name string) (*corev1.PodStatus, error) {
+	pod, err := p.GetPod(ctx, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+	return &pod.Status, nil
 }
 
 func (p *RemoteProvider) CreatePod(ctx context.Context, pod *corev1.Pod) error {
-	return nil
+	_, err := p.clients.LocalClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	return err
 }
 
 func (p *RemoteProvider) UpdatePod(ctx context.Context, pod *corev1.Pod) error {
-	return nil
+	_, err := p.clients.LocalClient.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
+	return err
 }
 
 func (p *RemoteProvider) DeletePod(ctx context.Context, pod *corev1.Pod) error {
-	return nil
+	return p.clients.LocalClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 }
 
-func newNodeProvider() node.NodeProvider {
-	return &RemoteNodeProvider{}
+func newNodeProvider(nodeName string) node.NodeProvider {
+	return &RemoteNodeProvider{
+		nodeName: nodeName,
+	}
 }
 
-func NewProvider(clientset *kubernetes.Clientset, nodeName string) (nodeutil.Provider, node.NodeProvider, error) {
-	provider := &RemoteProvider{}
-	nodeProvider := newNodeProvider()
+func NewProvider(clients *ProviderClients, nodeName string) (nodeutil.Provider, node.NodeProvider, error) {
+	provider := &RemoteProvider{
+		clients:  clients,
+		nodeName: nodeName,
+	}
+	nodeProvider := newNodeProvider(nodeName)
 	return provider, nodeProvider, nil
 }
