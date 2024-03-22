@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"io"
+	"log"
+	"time"
 
 	dto "github.com/prometheus/client_model/go"
 	node "github.com/virtual-kubelet/virtual-kubelet/node"
@@ -10,6 +12,7 @@ import (
 	"github.com/virtual-kubelet/virtual-kubelet/node/api/statsv1alpha1"
 	nodeutil "github.com/virtual-kubelet/virtual-kubelet/node/nodeutil"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/client-go/kubernetes"
 )
@@ -25,6 +28,41 @@ func (p *RemoteNodeProvider) Ping(context.Context) error {
 }
 
 func (p *RemoteNodeProvider) NotifyNodeStatus(ctx context.Context, cb func(*corev1.Node)) {
+	ticker := time.NewTicker(10 * time.Second)
+
+	go func() {
+
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				// Create a new node status object
+				nodeStatus := &corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "remote-node", // Use your actual node name
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{
+								Type:               corev1.NodeReady,
+								Status:             corev1.ConditionTrue, // Or ConditionFalse based on actual health check
+								LastHeartbeatTime:  metav1.Now(),
+								LastTransitionTime: metav1.Now(),
+								Reason:             "KubeletReady",
+								Message:            "kubelet is posting ready status",
+							},
+						},
+					},
+				}
+
+				// Call the callback with the updated node status
+				log.Println("updating node status")
+				cb(nodeStatus)
+			}
+		}
+	}()
 }
 
 // Provider controller methods

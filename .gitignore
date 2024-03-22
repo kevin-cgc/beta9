@@ -2,6 +2,7 @@ bin/gateway
 bin/runner
 bin/worker
 bin/proxy
+bin/agent
 tmp/*
 *.gob
 __pycache__
@@ -24,3 +25,4 @@ test
 **/nvidia-device-plugin.yaml.skip
 manifests/**/charts/**
 build.sh
+okteto.yaml

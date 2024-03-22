@@ -9,9 +9,24 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
+
+func InitializeKubeClientLocal(clusterName, region string) (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating Kubernetes clientset: %w", err)
+	}
+
+	return clientset, nil
+}
 
 func InitializeKubeClient(clusterName, region string) (*kubernetes.Clientset, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
