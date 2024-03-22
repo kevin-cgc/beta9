@@ -26,6 +26,10 @@ gateway:
 	docker build . --target build -f ./docker/Dockerfile.gateway -t localhost:5001/beta9-gateway:$(tag)
 	docker push localhost:5001/beta9-gateway:$(tag)
 
+agent:
+	docker build . --target build -f ./docker/Dockerfile.agent -t localhost:5001/beta9-agent:$(tag)
+	docker push localhost:5001/beta9-agent:$(tag)
+
 worker:
 	docker build . --target final --build-arg BASE_STAGE=dev -f ./docker/Dockerfile.worker -t localhost:5001/beta9-worker:$(workerTag)
 	docker push localhost:5001/beta9-worker:$(workerTag)
