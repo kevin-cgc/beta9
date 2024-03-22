@@ -2,37 +2,21 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"log"
 
 	"github.com/beam-cloud/beta9/internal/agent"
-
-	vk "github.com/virtual-kubelet/virtual-kubelet"
-	node "github.com/virtual-kubelet/virtual-kubelet/node"
+	"github.com/virtual-kubelet/virtual-kubelet/node"
 	nodeutil "github.com/virtual-kubelet/virtual-kubelet/node/nodeutil"
 )
-
-func NewProvider() (vk.Provider, node.NodeProvider, error) {
-
-}
 
 func main() {
 	nodeName := "test-node"
 	clusterName := "eks-stage-01"
 	region := "us-east-1"
 
-	// Initialize Kubernetes client for EKS
 	clientset, err := agent.InitializeKubeClient(clusterName, region)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error initializing Kubernetes client: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Setup Virtual Kubelet provider
-	provider, err := agent.SetupProvider(clientset, nodeName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error setting up provider: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error initializing Kubernetes client: %v\n", err)
 	}
 
 	// // Prepare node object for Virtual Kubelet
@@ -44,15 +28,21 @@ func main() {
 	// 	},
 	// }
 
-	node, err := nodeutil.NewNode(nodeName, provider)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error setting up provider: %v\n", err)
-		os.Exit(1)
+	newProvider := func(cfg nodeutil.ProviderConfig) (nodeutil.Provider, node.NodeProvider, error) {
+		provider, nodeProvider, err := agent.NewProvider(clientset, nodeName)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return provider, nodeProvider, nil
 	}
 
-	// Run the node
+	node, err := nodeutil.NewNode(nodeName, newProvider)
+	if err != nil {
+		log.Fatalf("error setting up provider: %v\n", err)
+	}
+
 	if err := node.Run(context.Background()); err != nil {
-		fmt.Fprintf(os.Stderr, "error running node: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error running node: %v\n", err)
 	}
 }
