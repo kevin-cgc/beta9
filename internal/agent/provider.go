@@ -12,6 +12,7 @@ import (
 	"github.com/virtual-kubelet/virtual-kubelet/node/api/statsv1alpha1"
 	nodeutil "github.com/virtual-kubelet/virtual-kubelet/node/nodeutil"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,21 +44,40 @@ func (p *RemoteNodeProvider) NotifyNodeStatus(ctx context.Context, cb func(*core
 				nodeStatus := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
-							"type":                   "virtual-kubelet",
-							"kubernetes.io/role":     "agent",
-							"kubernetes.io/hostname": p.nodeName,
+							"type":                                     "virtual-kubelet",
+							"kubernetes.io/role":                       "agent",
+							"kubernetes.io/hostname":                   p.nodeName,
+							"k8s.io/cloud-provider-aws":                "cd28fee5201ae1794c7b6ae3087eb8fa",
+							"beta.kubernetes.io/arch":                  "arm64",
+							"beta.kubernetes.io/instance-type":         "m7g.medium",
+							"beta.kubernetes.io/os":                    "linux",
+							"failure-domain.beta.kubernetes.io/region": "us-east-1",
+							"failure-domain.beta.kubernetes.io/zone":   "us-east-1a",
+							"k8s.beam.cloud/node-type":                 "1388477914098896978",
+							"kubernetes.io/arch":                       "arm64",
+							"kubernetes.io/os":                         "linux",
+							"node.kubernetes.io/instance-type":         "m7g.medium",
+							"topology.ebs.csi.aws.com/zone":            "us-east-1a",
+							"topology.kubernetes.io/region":            "us-east-1",
+							"topology.kubernetes.io/zone":              "us-east-1a",
 						},
 					},
 					Status: corev1.NodeStatus{
 						Conditions: []corev1.NodeCondition{
 							{
 								Type:               corev1.NodeReady,
-								Status:             corev1.ConditionTrue, // Or ConditionFalse based on actual health check
+								Status:             corev1.ConditionTrue,
 								LastHeartbeatTime:  metav1.Now(),
 								LastTransitionTime: metav1.Now(),
 								Reason:             "KubeletReady",
 								Message:            "kubelet is posting ready status",
 							},
+						},
+						Capacity: corev1.ResourceList{
+							corev1.ResourcePods: *resource.NewQuantity(100, resource.DecimalSI),
+						},
+						Allocatable: corev1.ResourceList{
+							corev1.ResourcePods: *resource.NewQuantity(100, resource.DecimalSI),
 						},
 					},
 				}
@@ -88,6 +108,7 @@ func (p *RemoteProvider) GetStatsSummary(context.Context) (*statsv1alpha1.Summar
 }
 
 func (p *RemoteProvider) RunInContainer(ctx context.Context, namespace, podName, containerName string, cmd []string, attach nodeapi.AttachIO) error {
+	log.Println("calling RunInContainer")
 	return nil
 }
 
@@ -102,6 +123,7 @@ func (p *RemoteProvider) GetPod(ctx context.Context, namespace, name string) (*c
 }
 
 func (p *RemoteProvider) GetPods(ctx context.Context) ([]*corev1.Pod, error) {
+	log.Println("calling get pods")
 	podList, err := p.clients.LocalClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 		FieldSelector: "spec.nodeName=" + p.nodeName,
 	})
@@ -124,16 +146,19 @@ func (p *RemoteProvider) GetPodStatus(ctx context.Context, namespace, name strin
 }
 
 func (p *RemoteProvider) CreatePod(ctx context.Context, pod *corev1.Pod) error {
+	log.Println("CREATING POD: ", pod)
 	_, err := p.clients.LocalClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	return err
 }
 
 func (p *RemoteProvider) UpdatePod(ctx context.Context, pod *corev1.Pod) error {
+	log.Println("UPDATING POD: ")
 	_, err := p.clients.LocalClient.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
 	return err
 }
 
 func (p *RemoteProvider) DeletePod(ctx context.Context, pod *corev1.Pod) error {
+	log.Println("DELETING POD: ")
 	return p.clients.LocalClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 }
 

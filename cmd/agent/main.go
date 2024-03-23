@@ -21,9 +21,10 @@ func main() {
 
 	clients, err := agent.InitializeClients(clusterName, region)
 	if err != nil {
-		log.Fatalf("error initializing Kubernetes client: %v\n", err)
+		log.Fatalf("error initializing Kubernetes clients: %v\n", err)
 	}
 
+	log.Println("starting agent")
 	newProvider := func(cfg nodeutil.ProviderConfig) (nodeutil.Provider, node.NodeProvider, error) {
 		provider, nodeProvider, err := agent.NewProvider(clients, nodeName)
 		if err != nil {
@@ -39,6 +40,9 @@ func main() {
 		HTTPListenAddr:       ":10250",
 		Client:               clients.LocalClient,
 		NodeSpec: v1.Node{
+			Spec: v1.NodeSpec{
+				ProviderID: "external:///virtual-kubelet/instance-id",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: nodeName,
 				Labels: map[string]string{
@@ -59,7 +63,7 @@ func main() {
 			},
 		}}
 
-	node, err := nodeutil.NewNode(nodeName, newProvider, nodeutil.WithNodeConfig(c))
+	node, err := agent.NewNode(nodeName, newProvider, nodeutil.WithNodeConfig(c))
 	if err != nil {
 		log.Fatalf("error setting up provider: %v\n", err)
 	}
