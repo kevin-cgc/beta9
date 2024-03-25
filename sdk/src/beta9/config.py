@@ -130,12 +130,8 @@ def configure_gateway_credentials(
     terminal.header("Welcome to Beta9! Let's get started 📡")
 
     name = name or terminal.prompt(text="Profile name", default=DEFAULT_PROFILE_NAME)
-    gateway_host = gateway_host or terminal.prompt(
-        text="Gateway host", default=DEFAULT_GATEWAY_HOST
-    )
-    gateway_port = gateway_port or terminal.prompt(
-        text="Gateway port", default=DEFAULT_GATEWAY_PORT
-    )
+    gateway_host = terminal.prompt(text="Gateway host", default=DEFAULT_GATEWAY_HOST)
+    gateway_port = terminal.prompt(text="Gateway port", default=DEFAULT_GATEWAY_PORT)
     http_port = terminal.prompt(text="HTTP port", default=DEFAULT_HTTP_PORT)
     token = token or terminal.prompt(text="Token", default=None)
 

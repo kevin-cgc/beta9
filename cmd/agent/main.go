@@ -9,6 +9,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/beam-cloud/beta9/internal/agent"
+	"github.com/beam-cloud/beta9/internal/common"
+	"github.com/beam-cloud/beta9/internal/network"
+	"github.com/beam-cloud/beta9/internal/repository"
+	"github.com/beam-cloud/beta9/internal/types"
 	"github.com/virtual-kubelet/virtual-kubelet/node"
 	nodeutil "github.com/virtual-kubelet/virtual-kubelet/node/nodeutil"
 	v1 "k8s.io/api/core/v1"
@@ -33,6 +37,36 @@ func main() {
 
 		return provider, nodeProvider, nil
 	}
+
+	configManager, err := common.NewConfigManager[types.AppConfig]()
+	if err != nil {
+		return
+	}
+
+	config := configManager.GetConfig()
+
+	redisClient, err := common.NewRedisClient(config.Database.Redis, common.WithClientName("Beta9Agent"))
+	if err != nil {
+		return
+	}
+
+	log.Printf("got redis client: %+v\n", redisClient)
+	tailscaleRepo := repository.NewTailscaleRedisRepository(redisClient, config)
+
+	tailscale := network.GetOrCreateTailscale(network.TailscaleConfig{
+		ControlURL: config.Tailscale.ControlURL,
+		AuthKey:    config.Tailscale.AuthKey,
+		Debug:      config.Tailscale.Debug,
+		Ephemeral:  true,
+	}, tailscaleRepo)
+
+	k8sHostname, err := tailscale.GetHostnameForService("k8s")
+	if err != nil {
+		log.Println("err: ", err)
+		return
+	}
+
+	log.Println("k8s hostname: ", k8sHostname)
 
 	c := nodeutil.NodeConfig{
 		NumWorkers:           runtime.NumCPU(),

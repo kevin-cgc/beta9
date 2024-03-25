@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
@@ -17,6 +18,47 @@ import (
 type ProviderClients struct {
 	LocalClient  *kubernetes.Clientset
 	RemoteClient *kubernetes.Clientset
+}
+
+type KubeClientConfig struct {
+	APIServer   string
+	BearerToken string
+	CACert      []byte
+}
+
+func NewKubeClientConfig() (*KubeClientConfig, error) {
+	apiServer := "https://" + os.Getenv("KUBERNETES_SERVICE_HOST") + ":" + os.Getenv("KUBERNETES_SERVICE_PORT_HTTPS")
+
+	token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read token file: %w", err)
+	}
+
+	caCert, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CA certificate file: %w", err)
+	}
+
+	return &KubeClientConfig{
+		APIServer:   apiServer,
+		BearerToken: string(token),
+		CACert:      caCert,
+	}, nil
+}
+
+func (c *KubeClientConfig) CreateClientset() (*kubernetes.Clientset, error) {
+	config := &rest.Config{
+		Host:            c.APIServer,
+		BearerToken:     c.BearerToken,
+		TLSClientConfig: rest.TLSClientConfig{CAData: c.CACert},
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating Kubernetes clientset: %w", err)
+	}
+
+	return clientset, nil
 }
 
 func InitializeClients(clusterName, region string) (*ProviderClients, error) {

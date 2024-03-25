@@ -22,9 +22,13 @@ storage:
   objectPath: /data/objects
   juicefs:
     redisURI: redis://juicefs-redis-master.beta9:6379/0
-    awsS3Bucket: http://localstack.beta9:4566/juicefs
-    awsAccessKey: test
-    awsSecretKey: test
+    awsS3Bucket: https://beta9-testjuicefs.s3.amazonaws.com
+    awsAccessKey: AKIASXGG4MR4ODEJKTAL
+    awsSecretKey: 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
+  mountpoint:
+    awsS3Bucket: beta9-testjuicefs
+    awsAccessKey: AKIASXGG4MR4ODEJKTAL
+    awsSecretKey: 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
 gateway:
   host: beta9-gateway.beta9
   httpPort: 1994
@@ -33,21 +37,21 @@ gateway:
   maxSendMsgSize: 1024
 imageService:
   cacheURL:
-  registryStore: local
-  registryCredentialProvider: docker
+  registryStore: s3
+  registryCredentialProvider: aws
   registries:
     docker:
       username: beamcloud
       password:
     s3:
-      awsS3Bucket: beta9-images
+      awsS3Bucket: beta9-testimages
       awsRegion: us-east-1
-      awsAccessKey: test
-      awsSecretKey: test
+      awsAccessKey: AKIASXGG4MR4ODEJKTAL
+      awsSecretKey: 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
   runner:
     baseImageTag: latest
     baseImageName: beta9-runner
-    baseImageRegistry: registry.localhost:5000
+    baseImageRegistry: public.ecr.aws/n4e0e1y0 # registry.localhost:5000
     tags:
       python3.8: py38-latest
       python3.9: py39-latest
@@ -60,13 +64,53 @@ worker:
       mode: local
       jobSpec:
         nodeSelector: {}
+      # poolSizing:
+      #   defaultWorkerCpu: 1000m
+      #   defaultWorkerGpuType: ""
+      #   defaultWorkerMemory: 1Gi
+      #   minFreeCpu: 1000m
+      #   minFreeGpu: 0
+      #   minFreeMemory: 1Gi
+    a10-oci:
+      mode: metal
+      provider: oci
+      gpuType: T4
+      runtime: nvidia
       poolSizing:
-        defaultWorkerCpu: 1000m
-        defaultWorkerGpuType: ""
-        defaultWorkerMemory: 1Gi
-        minFreeCpu: 1000m
+        defaultWorkerCpu: 16000m
+        defaultWorkerGpuType: T4
+        defaultWorkerGpuCount: 8
+        defaultWorkerMemory: 20Gi
+        minFreeCpu:
         minFreeGpu: 0
-        minFreeMemory: 1Gi
+        minFreeMemory:
+    # t4-ec2:
+    #   mode: metal
+    #   provider: ec2
+    #   gpuType: T4
+    #   runtime: nvidia
+    #   poolSizing:
+    #     defaultWorkerCpu: 16000m
+    #     defaultWorkerGpuType: T4
+    #     defaultWorkerGpuCount: 8
+    #     defaultWorkerMemory: 20Gi
+    #     minFreeCpu:
+    #     minFreeGpu: 0
+    #     minFreeMemory:
+    # a10-oci:
+    #   mode: metal
+    #   provider: oci
+    #   gpuType: T4
+    #   runtime: nvidia
+    #   poolSizing:
+    #     defaultWorkerCpu: 16000m
+    #     defaultWorkerGpuType: A10G
+    #     defaultWorkerGpuCount: 8
+    #     defaultWorkerMemory: 20Gi
+    #     minFreeCpu:
+    #     minFreeGpu: 0
+    #     minFreeMemory:
+
     # example gpu worker pool
     # nvidia:
     #   gpuType: A40
@@ -84,7 +128,7 @@ worker:
   hostNetwork: false
   imageTag: latest
   imageName: beta9-worker
-  imageRegistry: registry.localhost:5000
+  imageRegistry: public.ecr.aws/n4e0e1y0
   imagePullSecrets: []
   namespace: beta9
   serviceAccountName: default
@@ -95,43 +139,92 @@ worker:
   defaultWorkerMemoryRequest: 1024
   terminationGracePeriod: 30
   addWorkerTimeout: 10m
+
 providers:
   ec2:
-    accessKey:
-    secretkey:
-    region: us-east-1
+    awsAccessKey: AKIASXGG4MR4ODEJKTAL
+    awsSecretKey: r9gwXSFxfKMfcnlY+Dv9NPxvqSs5hMOB/JUAVzWk
+    awsRegion: us-east-1
     # If you want workers nodes to land in your default vpc, you can omit subnetId
-    subnetId:
+    subnetId: subnet-09a34106b927be1a1
     ami: ami-052c704a7f82c38b1
+  oci:
+    tenancy: ocid1.tenancy.oc1..aaaaaaaaau6ulf4ulc7jdkzy26o6uphmgwzxso5sgkfwtyyahrpbs4sztrra
+    userId: ocid1.user.oc1..aaaaaaaaq6djfm2wmjsr6xjjkfjymigjqxy6e2d7qyaynkr44xnrazrroqba
+    compartmentId: ocid1.compartment.oc1..aaaaaaaauzsau4w2k37gkcfzz534pfejxitnn7c4hob2qgbwiefe564x6kkq
+    subnetId: ocid1.subnet.oc1.iad.aaaaaaaabru2vvuj47r7cribtonzs3jma3z3yjymfhrxr3syhlr4rn4myp5a
+    availabilityDomain: pAUM:US-ASHBURN-AD-3
+    imageId: ocid1.image.oc1.iad.aaaaaaaatn2m25avt3bsyyn7gqxknga7pun7bwnh5ngwb56724jd3kxjiudq
+    fingerprint: dc:ce:7a:1d:fa:76:8e:3b:aa:a5:8b:40:5c:99:25:55
+    region: us-ashburn-1
+    privateKey: |
+      -----BEGIN PRIVATE KEY-----
+      MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDQBc8Vjj9fyvuv
+      /+UOuYWz5GHxyKP/QxinGrRtNqMJhPq2OCjKzuV7xiMcennEbSG79KhQbeL4BX2z
+      Y982hHRJPLjt+eBXTQdnceuWvAKvVr/BuHNRUSKmc2hNTomTc6e6FrnQfWEzYnuu
+      SgmkvqjZ4ttZhf1RLf584Dcs1+p/9IaXpzVHvPGUz1E2aVyxdyPUdTwY9YULrW7R
+      KRUMwsX7iiQDuXe1AEfFoX+5iSQgDTSn3Vcj3ksY8FBE0Q+lk+jRAWootCol04ps
+      E+Xy/23Zzdd0hWM37guXai+6MHjE0R6qF086EtY2tdsJGJj9fWPAhrKIz4QHLUqj
+      O6h11yGnAgMBAAECggEBAKbasfLxSSX185GFKN55sqPLYUCFlf2OfPy0L9qWA4oE
+      LvDv9NBPycRQ9iLGnlsOygsvv73blj0ocl3sksLw1TFVUmQXlHmR4Il51+Ts4x5u
+      75pb76te7/MhCJ1RjIpIL1XVGq//kXKc4OW4nymUgG1cSGLzVW/C+6iAU+FVQtPk
+      BJJLTbBQ6s+PlpStuBiDxyf0hiCVgCGCBDgjYm/Lx0GM1p5ICFNemL6Gt87fGKXn
+      wmePSI2nIPLosSwVvjiNcZCBoU0s7ZcF8jO1OYeCf52UDAIBjcLfWJ1OzlU7I4pZ
+      0z+Yq0MYHyOpRfdt35d2aQ80Y24VjK+GeJAASxKLosECgYEA+j31ilP690F5YmHL
+      Xxnwc3QExtRNpqLijYIZyoDlv+mWNItthsefLaWPdDFon1llNHvy8XdSbThTUQFI
+      zmvAdo/MACcADUTZInwWIiYsQ6Gz2nXoz6rpglWhbXQ6VFUI8lzx35OQ2v2DrwZM
+      eQdHNTJc+R8SjAwv1GUxMmw55IcCgYEA1M8ojv7ZPHjaHjRQybh8mtfNz2uvfx5V
+      sLrlxFkx8jLzjMUAHhWnhXa7/G/TiVMVur0ezWtePyjrZ0DjZReBBrnVBgqnSVPL
+      gc24G8INZkP8Y/wMGtTyXSk5DrFY1p8t+1nmrqyGcOwLOAMSI/BboSITmgxQCcZj
+      gwTUP4dZQeECgYEAgLRbVHELFB6VutcHjXs+43KZflX1Ni5yjUuLzk5rXEBco9vO
+      UlLbeNO9K4q5/7MvzUWu1yiCuXAN0gzyEFD1JUWiK7XjXe+6KfVeQOQXQhWp9kNM
+      oXqLLSCzrSLpWTR/LIBHWrGAAFIBZ4S60ki/BApKLUsg8+zUsM329rMZN4MCgYBu
+      P2QjsKOaUIGvZCr2Vj03etWEv6ULlguOo0SllA/sCbljFCwbadx/qCN7g/NzETgQ
+      pilvAlCxJ+HMfDFSDfsqINvbZWmE84RamtjmiIGomVAH/GvI+skUumZ01ivQBGct
+      8EUx+O8tURv+yJh9RegychT1matdZQnotne+8b+sAQKBgGa+ycZ/zH44fRO7hcer
+      Z7LJk6HnoiQV4js3vjxCQqtFzT4R7hda6n3RmeqLBiPdAxVELSGNz15XV1c96kC0
+      Fk2ZlFhJxoGItz0G6lmVEgHhTKcxJVLPWyI+4WPc7vt7LoN1PwZnpVzDgHmq0Y82
+      RFx+38lauCeIjefGNxrH3FtS
+      -----END PRIVATE KEY-----
+    privateKeyPassword: ChiNsTiALumB
 tailscale:
-  controlUrl:
+  controlUrl: https://beam-headscale-test.fly.dev
   user: beta9
-  authKey:
-  enabled: false
+  authKey: 894fd48530fc507385369217997bf27a10ec852a0c5de903
+  enabled: true
   debug: false
   hostName: headscale.internal
 proxy:
   services:
-  - name: redis
-    localPort: 6379
-    destination: redis-master.beta9:6379
-  - name: juicefs-redis
-    localPort: 6380
-    destination: juicefs-redis-master.beta9:6379
-  - name: gateway-http
-    localPort: 1994
-    destination: beta9-gateway.beta9:1994
-  - name: gateway-grpc
-    localPort: 1993
-    destination: beta9-gateway.beta9:1993
+    - name: redis
+      localPort: 6379
+      destination: redis-master.beta9:6379
+    - name: juicefs-redis
+      localPort: 6380
+      destination: juicefs-redis-master.beta9:6379
+    - name: gateway-http
+      localPort: 1994
+      destination: beta9-gateway.beta9:1994
+    - name: gateway-grpc
+      localPort: 1993
+      destination: beta9-gateway.beta9:1993
+    - name: fluentbit
+      localPort: 9880
+      destination: fluentbit.monitoring:9880
+    - name: k8s
+      localPort: 1000
+      destination: kubernetes.default.svc:443
 monitoring:
-  metricsCollector: prometheus
+  metricsCollector: openmeter
   prometheus:
     scrapeWorkers: true
     port: 9090
+  openmeter:
+    serverUrl: https://openmeter.cloud
+    apiKey: om_walLWH2mc0y0ZMDULrtGMmCveENWCIuV.80fmyXxfBy7og5M-ZdH3UvXgLZI4i5JX7gd88Uf0hu8
   fluentbit:
     events:
-      endpoint: http://fluent-bit.beta9:9880
+      endpoint: http://fluent-bit.monitoring:9880
       maxConns: 0
       maxIdleConns: 30
       idleConnTimeout: 10s

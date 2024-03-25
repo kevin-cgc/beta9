@@ -44,22 +44,9 @@ func (p *RemoteNodeProvider) NotifyNodeStatus(ctx context.Context, cb func(*core
 				nodeStatus := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
-							"type":                                     "virtual-kubelet",
-							"kubernetes.io/role":                       "agent",
-							"kubernetes.io/hostname":                   p.nodeName,
-							"k8s.io/cloud-provider-aws":                "cd28fee5201ae1794c7b6ae3087eb8fa",
-							"beta.kubernetes.io/arch":                  "arm64",
-							"beta.kubernetes.io/instance-type":         "m7g.medium",
-							"beta.kubernetes.io/os":                    "linux",
-							"failure-domain.beta.kubernetes.io/region": "us-east-1",
-							"failure-domain.beta.kubernetes.io/zone":   "us-east-1a",
-							"k8s.beam.cloud/node-type":                 "1388477914098896978",
-							"kubernetes.io/arch":                       "arm64",
-							"kubernetes.io/os":                         "linux",
-							"node.kubernetes.io/instance-type":         "m7g.medium",
-							"topology.ebs.csi.aws.com/zone":            "us-east-1a",
-							"topology.kubernetes.io/region":            "us-east-1",
-							"topology.kubernetes.io/zone":              "us-east-1a",
+							"type":                   "virtual-kubelet",
+							"kubernetes.io/role":     "agent",
+							"kubernetes.io/hostname": p.nodeName,
 						},
 					},
 					Status: corev1.NodeStatus{
