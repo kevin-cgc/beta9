@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/beam-cloud/beta9/proto";
+
+package rpc;
+
+service RPCService {
+  rpc RPCServiceLookup(RPCLookupRequest) returns (RPCLookupResponse) {}
+  rpc RPCServiceCall(RPCCallRequest) returns (RPCCallResponse) {}
+}
+
+message RPCLookupRequest {}
+
+message RPCLookupResponse { bool ok = 1; }
+
+message RPCCallRequest {}
+
+message RPCCallResponse { bool ok = 1; }
